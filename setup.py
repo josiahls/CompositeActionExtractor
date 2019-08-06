@@ -17,6 +17,5 @@ setup(name='composite_action_extractor',
       packages=[package for package in find_packages()
                 if package.startswith('composite_action_extractor')],
       zip_safe=False,
-      dependency_links=['https://github.com/MattChanTK/gym-maze/tarball/master#egg=gym-maz-1.0'],
       install_requires=['numpy', 'tqdm', 'pillow', 'pandas'],
       )
