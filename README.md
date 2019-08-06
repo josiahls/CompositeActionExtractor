@@ -1,5 +1,5 @@
 # Composite Action Extractor
-A method of extraction action segments by calculating either the entropy, distance, or divergence in 
+A method of extracting action segments / composite actions by calculating either the entropy, distance, or divergence in 
 probability disitrubtions over state and action spaces, then correlating spikes in those measurements in the action spaces
 with the spikes in the measurements in the state space.
 
