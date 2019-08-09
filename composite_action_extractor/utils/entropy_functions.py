@@ -6,15 +6,20 @@ def p(element, element_set: np.array):
     return np.sum(element_set == element) / len(element_set)
 
 
-# noinspection PyUnresolvedReferences
+def entropy_shannon(x_m: np.array, x: np.array=None) -> float:
+    """Calculates the Shannon entropy of a probability distribution.
 
+    Args:
+        x_m (np.array): Array of values from which a single entropy value will be determined.
+        x (np.array): Array of values from which probability of x_m can be determined.
 
-def entropy_regular(x_m, x=None):
+    References:
+        [1] Shannon, Claude E., and Warren Weaver. The mathematical theory of communication.
+        University of Illinois press, 1998.
+
+    Returns (float): value representing Shannon entropy.
     """
-    Basic Entropy Analysis using Frequentest Approach.
-    >>> R = - sum(p(x_i, x) * np.log(p(x_i, x)) for x_i in x_m)
 
-    """
     x_m = x_m if type(x_m) is np.array else np.array(x_m)
     if x is not None:
         return - sum(p(x_i, x) * np.log(p(x_i, x)) for x_i in x_m if x_i > 0)
@@ -23,39 +28,22 @@ def entropy_regular(x_m, x=None):
         return - sum(x_i * np.log(x_i) for x_i in x_m if x_i > 0)
 
 
-def entropy_shannon(time_series):
-    """Return the Shannon Entropy of the sample data.
+def entropy_approximate(U, m, r) -> float:
+    """Calculates the Approximate Entropy of a probability distribution.
+
+
     Args:
-        time_series: Vector or string of the sample data
-    Returns:
-        The Shannon Entropy as float value
+        U (list): Array of values from which a single entropy value will be determined.
+        m (int): Length of values to compare with each other.
+        r (int): Smoothing value
+    References:
+        [1] Pincus, Steven M. "Approximate entropy as a measure of system complexity."
+        Proceedings of the National Academy of Sciences 88.6 (1991): 2297-2301.
+        [2] "Approximate Entropy." En.wikipedia.org. N. p., 2019. Web. 9 Aug. 2019.
+        https://en.wikipedia.org/wiki/Approximate_entropy
+
+    Returns (float): value representing Approximate entropy.
     """
-
-    # Check if string
-    if not isinstance(time_series, str):
-        time_series = list(time_series)
-
-    # Create a frequency data
-    data_set = list(set(time_series))
-    freq_list = []
-    for entry in data_set:
-        counter = 0.
-        for i in time_series:
-            if i == entry:
-                counter += 1
-        freq_list.append(float(counter) / len(time_series))
-
-    # Shannon entropy
-    # ent = 0.0
-    # for freq in freq_list:
-    #     ent += freq * np.log2(freq)
-    # ent = -ent
-    ent = -1 * sum([freq * np.log2(freq) for freq in freq_list if freq > 0])
-    return ent
-
-
-def entropy_approximate(U, m, r):
-    """https://en.wikipedia.org/wiki/Approximate_entropy"""
     def _maxdist(x_i, x_j):
         return max([abs(ua - va) for ua, va in zip(x_i, x_j)])
 
@@ -68,7 +56,22 @@ def entropy_approximate(U, m, r):
 
 
 def entropy_sample(U, m, r):
-    """https://en.wikipedia.org/wiki/Sample_entropy"""
+    """Calculates the Sample Entropy of a probability distribution.
+
+
+    Args:
+        U (list): Array of values from which a single entropy value will be determined.
+        m (int): Length of values to compare with each other.
+        r (int): Smoothing value
+    References:
+        [1] Richman, Joshua S., and J. Randall Moorman. "Physiological time-series analysis using approximate
+        entropy and sample entropy." American Journal of Physiology-Heart and Circulatory Physiology 278.6 (2000):
+        H2039-H2049.
+        [2] "Sample Entropy." En.wikipedia.org. N. p., 2019. Web. 9 Aug. 2019.
+        https://en.wikipedia.org/wiki/Sample_entropy
+
+    Returns (float): value representing Sample entropy.
+    """
     def _maxdist(x_i, x_j):
         result = max([abs(ua - va) for ua, va in zip(x_i, x_j)])
         return result

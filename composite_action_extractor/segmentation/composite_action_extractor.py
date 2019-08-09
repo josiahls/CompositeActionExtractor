@@ -13,7 +13,7 @@ class CompositeActionExtractor:
     registered_method_names = {'shannon': 's', 'approximate': 'ae', 'sample': 'se', 'permutation': 'p',
                                'jensen_shannon': 'js', 'total_variance': 'tv', 'kl_divergence': 'kld',
                                'wasserstein': 'w'}
-    registered_method = {'shannon': entropy_regular, 'approximate': entropy_approximate,
+    registered_method = {'shannon': entropy_shannon, 'approximate': entropy_approximate,
                          'sample': entropy_sample, 'permutation': entropy_permutation,
                          'jensen_shannon': jensen_shannon_divergence, 'total_variance': total_variation_distance,
                          'kl_divergence': kl_divergence, 'wasserstein': earth_mover_wasserstein_distance}
