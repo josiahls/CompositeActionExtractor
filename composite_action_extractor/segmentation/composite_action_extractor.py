@@ -62,25 +62,25 @@ class CompositeActionExtractor:
                 message += f'We are going to ignore the dataframe.{bcolors.ENDC}'
 
         # Generates binned and windowed versions of the matrices.
-        state_bw = CompositeActionExtractor.bin_p_window(state, window_size, bins, False)
-        actions_bw = CompositeActionExtractor.bin_p_window(actions, window_size, bins, True)
+        state_bw = CompositeActionExtractor._bin_p_window(state, window_size, bins, False)
+        actions_bw = CompositeActionExtractor._bin_p_window(actions, window_size, bins, True)
 
         # Produce Analysis of both state and actions.
-        state_analyzed = CompositeActionExtractor.analyze(state_bw, method=analysis_method, collapse_by_average=True)
-        action_analyzed = CompositeActionExtractor.analyze(actions_bw, method=analysis_method, collapse_by_average=False)
+        state_analyzed = CompositeActionExtractor._analyze(state_bw, method=analysis_method, collapse_by_average=True)
+        action_analyzed = CompositeActionExtractor._analyze(actions_bw, method=analysis_method, collapse_by_average=False)
 
         # Normalize the outputs
-        state_analyzed_norm = CompositeActionExtractor.normalize(state_analyzed)
-        action_analyzed_norm = CompositeActionExtractor.normalize(action_analyzed, norm_per_dim=True)
+        state_analyzed_norm = CompositeActionExtractor._normalize(state_analyzed)
+        action_analyzed_norm = CompositeActionExtractor._normalize(action_analyzed, norm_per_dim=True)
 
         # Get binary distributions
-        state_analyzed_binary = CompositeActionExtractor.get_binary_dist(state_analyzed_norm, keep_percent)
-        action_analyzed_binary = CompositeActionExtractor.get_binary_dist(action_analyzed_norm, keep_percent, per_dim=True)
+        state_analyzed_binary = CompositeActionExtractor._get_binary_dist(state_analyzed_norm, keep_percent)
+        action_analyzed_binary = CompositeActionExtractor._get_binary_dist(action_analyzed_norm, keep_percent, per_dim=True)
 
         # Get segments (Hurray)
-        composite_actions, index_groups = CompositeActionExtractor.get_composite_action_groups(actions, action_analyzed_binary,
-                                                                                               state_analyzed_binary,
-                                                                                               window_size)
+        composite_actions, index_groups = CompositeActionExtractor._get_composite_action_groups(actions, action_analyzed_binary,
+                                                                                                state_analyzed_binary,
+                                                                                                window_size)
 
         info = {'state_bw': state_bw, 'actions_bw': actions_bw, 'state_analyzed': state_analyzed,
                 'action_analyzed': action_analyzed, 'state_analyzed_norm': state_analyzed_norm,
@@ -91,21 +91,21 @@ class CompositeActionExtractor:
         return composite_actions, info
 
     @staticmethod
-    def get_composite_action_groups(actions: np.array, binary_actions: np.array, state: np.array, window_size):
+    def _get_composite_action_groups(actions: np.array, binary_actions: np.array, state: np.array, window_size):
         l_w = window_size // 2 + 1
         r_w = window_size // 2
 
         composite_action_dict = {}
         group_dict = {}
         for d in range(binary_actions.shape[1]):
-            valid_groups = CompositeActionExtractor.get_valid_segments(binary_actions[:, d], state, l_w, r_w)
-            composite_actions = CompositeActionExtractor.get_single_composite_actions(actions, valid_groups)
+            valid_groups = CompositeActionExtractor._get_valid_segments(binary_actions[:, d], state, l_w, r_w)
+            composite_actions = CompositeActionExtractor._get_single_composite_actions(actions, valid_groups)
             composite_action_dict[d] = composite_actions
             group_dict[d] = valid_groups
         return composite_action_dict, group_dict
 
     @staticmethod
-    def get_single_composite_actions(actions: np.array, valid_groups: np.array):
+    def _get_single_composite_actions(actions: np.array, valid_groups: np.array):
         actions, valid_groups = actions.copy(), valid_groups.copy()
 
         sequences = []
@@ -124,18 +124,18 @@ class CompositeActionExtractor:
         return sequences
 
     @staticmethod
-    def get_valid_segments(actions: np.array, state: np.array, l_w, r_w):
+    def _get_valid_segments(actions: np.array, state: np.array, l_w, r_w):
         s = [(True in actions[i - l_w:i + r_w] and True in state[i - l_w:i + r_w]) for i in range(state.shape[0])]
-        return CompositeActionExtractor.get_bin_group(s)
+        return CompositeActionExtractor._get_bin_group(s)
 
     @staticmethod
-    def get_binary_dist(series: np.array, threshold, per_dim=False):
+    def _get_binary_dist(series: np.array, threshold, per_dim=False):
         if per_dim:
-            return np.apply_along_axis(CompositeActionExtractor.get_binary_dist, 1, series.copy(), threshold)
+            return np.apply_along_axis(CompositeActionExtractor._get_binary_dist, 1, series.copy(), threshold)
         return series >= threshold
 
     @staticmethod
-    def get_bin_group(series: np.array):
+    def _get_bin_group(series: np.array):
         skip = False
         new_sequence = [False] * len(series)
         for i, element in enumerate(series):
@@ -148,7 +148,7 @@ class CompositeActionExtractor:
         return np.array(new_sequence)
 
     @staticmethod
-    def analyze(series: np.array, method: str, collapse_by_average: bool):
+    def _analyze(series: np.array, method: str, collapse_by_average: bool):
         """
         Based on the method chose, return the result from that method.
 
@@ -178,15 +178,15 @@ class CompositeActionExtractor:
 
             # Handle method arguments
             if method_name == 'approximate':
-                method = partial(method, m=3, r=1)
+                method = partial(method, m=3, r=0)
             if method_name == 'sample':
-                method = partial(method, m=3, r=1)
+                method = partial(method, m=2, r=1)
 
             # Iterate through the dimensions
             for d in range(series.shape[1]):
                 if needs_q:
                     # s_d = np.expand_dims(np.apply_along_axis(compositeActionExtractor.get_q, 1, series[:, d], method), 1)
-                    s_d = CompositeActionExtractor.analyze_with_q(series[:, d], method)
+                    s_d = CompositeActionExtractor._analyze_with_q(series[:, d], method)
                 else:
                     s_d = np.expand_dims(np.apply_along_axis(method, 1, series[:, d]), 1)
                 analyzed_series = np.hstack((analyzed_series, s_d)) if analyzed_series is not None else s_d
@@ -196,7 +196,7 @@ class CompositeActionExtractor:
         return np.average(analyzed_series, axis=1).reshape(-1, 1) if collapse_by_average else analyzed_series
 
     @staticmethod
-    def analyze_with_q(series: np.array, method):
+    def _analyze_with_q(series: np.array, method):
         """
         Generates a series using the passed in method.
 
@@ -226,22 +226,22 @@ class CompositeActionExtractor:
             # We keep the minimum distance, which if 0 will mean there is a constant pattern
             s_d_q.append(min([method(series[i], series[i + direction * j]) for j in range(1, series.shape[1])]))
 
-        return CompositeActionExtractor.remove_nans_negatives(np.array(s_d_q)).reshape(-1, 1)
+        return CompositeActionExtractor._remove_nans_negatives(np.array(s_d_q)).reshape(-1, 1)
 
     @staticmethod
-    def remove_nans_negatives(series: np.array):
+    def _remove_nans_negatives(series: np.array):
         series[np.isnan(series)] = 0
         series[series <= 0] = 0
         return series
 
     @staticmethod
-    def normalize(series: np.array, norm_per_dim=False):
+    def _normalize(series: np.array, norm_per_dim=False):
         if norm_per_dim:
-            return np.apply_over_axes(CompositeActionExtractor.normalize, series, 0)
+            return np.apply_over_axes(CompositeActionExtractor._normalize, series, 0)
         return (series - series.min()) / (series.max() - series.min())
 
     @staticmethod
-    def get_p(series: np.array, p_per_dim: bool):
+    def _get_p(series: np.array, p_per_dim: bool):
         """
         Gets the probabilities for a series.
 
@@ -271,7 +271,7 @@ class CompositeActionExtractor:
             return series_p
 
     @staticmethod
-    def bin_p_window(series: np.array, window_size: int, bins: int, p_per_dim):
+    def _bin_p_window(series: np.array, window_size: int, bins: int, p_per_dim):
         """
         Converts a series toa binned series, then as probabilities, and finally as a windowed series.
 
@@ -285,12 +285,12 @@ class CompositeActionExtractor:
 
         """
         series_b = np.apply_along_axis(partial(bin_numpy, bins=bins), 0, series)
-        series_p = CompositeActionExtractor.get_p(series_b, p_per_dim)
-        series_w = CompositeActionExtractor.get_windowed_series(series_p, window_size)
+        series_p = CompositeActionExtractor._get_p(series_b, p_per_dim)
+        series_w = CompositeActionExtractor._get_windowed_series(series_p, window_size)
         return series_w
 
     @staticmethod
-    def get_windowed_series(series: np.array, window_size: int):
+    def _get_windowed_series(series: np.array, window_size: int):
         """
         Returns a series in a windowed format.
 
@@ -315,7 +315,7 @@ class CompositeActionExtractor:
         windowed_series = None
         for d in range(series.shape[1]):
             # You might be able to use apply_over_axes instead
-            temp = np.apply_along_axis(CompositeActionExtractor.slide_window, 0, series[:, d], window_size)
+            temp = np.apply_along_axis(CompositeActionExtractor._slide_window, 0, series[:, d], window_size)
             if windowed_series is None:
                 windowed_series = np.expand_dims(series[:, d][temp], axis=1)
             else:
@@ -323,7 +323,7 @@ class CompositeActionExtractor:
         return windowed_series
 
     @staticmethod
-    def slide_window(series: np.array, window_size: int):
+    def _slide_window(series: np.array, window_size: int):
         """
         Returns a windowed series that is padded via duplicating the end indices.
 

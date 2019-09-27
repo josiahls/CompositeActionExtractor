@@ -1,9 +1,12 @@
 import os
 import queue
+import pandas as pd
+import numpy as np
 from pathlib import Path, PosixPath
 
 
-def get_recent_data_path(directory='data', project_root='composite_action_extractor', directory_hint=None, mode='recent',
+def get_recent_data_path(directory='data', project_root='composite_action_extractor', directory_hint=None,
+                         mode='recent',
                          ignore_hidden=True, ignore_files=True):
     """
     Gets the path to the most recent data directory.
@@ -97,3 +100,15 @@ def get_absolute_path(directory, project_root='composite_action_extractor', dire
 
     raise IOError(f'Path to {directory} not found.')
 
+
+def get_data_df(csv_file_name):
+    # Read in entropy csv
+    base_path = get_absolute_path('data', directory_file_hint=csv_file_name.lower(), ignore_files=False)
+    csv_path = os.path.join(base_path, 'state_action_data.csv')
+
+    pre_data = pd.read_csv(csv_path, index_col=None)
+    selected_episodes = pre_data['episode'].unique()  # Either do [some index] or [:]
+    selected_episodes = [selected_episodes] if np.isscalar(selected_episodes) else selected_episodes
+    data_df = pre_data[pre_data['episode'].isin(selected_episodes)]
+    data_df_episodes = [data_df[data_df['episode'] == episode].copy() for episode in selected_episodes]
+    return data_df_episodes, selected_episodes
