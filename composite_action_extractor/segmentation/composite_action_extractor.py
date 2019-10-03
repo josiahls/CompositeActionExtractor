@@ -21,7 +21,7 @@ class CompositeActionExtractor:
     @staticmethod
     def get_composite_actions(actions: np.array = None, state: np.array = None, dataframe: pd.DataFrame = None,
                           analysis_method='shannon', keep_percent=0.5, window_size=5, bins=64,
-                          action_df_col_prefix='action_value', state_df_col_prefix='state_values') -> Tuple[dict, dict]:
+                          action_df_col_prefix='action_value', state_df_col_prefix='state_values', k = -1) -> Tuple[dict, dict]:
         """
         Calculates segments for all actions using action, and state analysis information.
 
@@ -82,11 +82,18 @@ class CompositeActionExtractor:
                                                                                                 state_analyzed_binary,
                                                                                                 window_size)
 
+        if k != -1:
+            scored_composite_actions = {key: [(seg, state_analyzed_norm[~np.isnan(seg)].sum()) for seg in composite_actions[key]] for key in composite_actions}
+            for key in scored_composite_actions:
+                scored_composite_actions[key] = list(sorted(scored_composite_actions[key], key=lambda x: x[1], reverse=True))[:k]
+        else:
+            scored_composite_actions = None
+
         info = {'state_bw': state_bw, 'actions_bw': actions_bw, 'state_analyzed': state_analyzed,
                 'action_analyzed': action_analyzed, 'state_analyzed_norm': state_analyzed_norm,
                 'action_analyzed_norm': action_analyzed_norm, 'state_analyzed_binary': state_analyzed_binary,
                 'action_analyzed_binary': action_analyzed_binary, 'index_groups': index_groups, 'state': state,
-                'actions': actions}
+                'actions': actions, 'scored_composite_actions': scored_composite_actions}
 
         return composite_actions, info
 
