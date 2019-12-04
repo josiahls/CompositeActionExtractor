@@ -41,3 +41,9 @@ Below are our results of running our method on nine OpenAI environments:
 ![Tennis Action](res/tennis_row.png)
 ![Pong Action](res/pong_row.png)
 
+Above are the beginnings, middles, and ends of example composite actions found
+during training of an RL agent. This demonstrates that even in early training, our
+composite action extractor is able to find human discernible clusters of actions.
+
+We have more examples in the `video_samples` directory. 
+

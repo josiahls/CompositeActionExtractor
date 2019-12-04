@@ -3,10 +3,12 @@ from functools import partial
 
 import pandas as pd
 from typing import Tuple
+import logging
+import time
 
-from utils.divergence_distance_functions import *
-from utils.entropy_functions import *
-from utils.misc import bcolors, list_of_str_to_num, bin_numpy
+from composite_action_extractor.utils.divergence_distance_functions import *
+from composite_action_extractor.utils.entropy_functions import *
+from composite_action_extractor.utils.misc import bcolors, list_of_str_to_num, bin_numpy
 
 
 class CompositeActionExtractor:
@@ -20,8 +22,9 @@ class CompositeActionExtractor:
 
     @staticmethod
     def get_composite_actions(actions: np.array = None, state: np.array = None, dataframe: pd.DataFrame = None,
-                          analysis_method='shannon', keep_percent=0.5, window_size=5, bins=64,
-                          action_df_col_prefix='action_value', state_df_col_prefix='state_values', k = -1) -> Tuple[dict, dict]:
+                              analysis_method='shannon', keep_percent=0.5, window_size=5, bins=64,
+                              action_df_col_prefix='action_value', state_df_col_prefix='state_values', k=-1,
+                              is_single_action=False) -> Tuple[dict, dict]:
         """
         Calculates segments for all actions using action, and state analysis information.
 
@@ -44,6 +47,7 @@ class CompositeActionExtractor:
         Returns: (composite_actions, info)
 
         """
+        logging.debug('Loading Data')
         if actions is None or state is None:
             if dataframe is None:
                 message = bcolors.FAIL
@@ -52,9 +56,14 @@ class CompositeActionExtractor:
                 message += bcolors.ENDC
                 raise ValueError(message)
             else:
+                start = time.time()
                 actions = dataframe[[_ for _ in dataframe.columns if _.__contains__(action_df_col_prefix)]].values
                 string_state = dataframe[[_ for _ in dataframe.columns if _.__contains__(state_df_col_prefix)]].values
                 state = np.array([list_of_str_to_num(_)[0] for _ in string_state])
+                if type(actions[0][0]) is str:
+                    actions = np.array([list_of_str_to_num(_)[0] for _ in actions])
+                end = time.time()
+                logging.debug(f'Stage 1 [State/Action into Usable Inputs]: Elapsed time {end - start}')
         else:
             if dataframe is not None:
                 message = bcolors.WARNING
@@ -62,30 +71,52 @@ class CompositeActionExtractor:
                 message += f'We are going to ignore the dataframe.{bcolors.ENDC}'
 
         # Generates binned and windowed versions of the matrices.
+        start = time.time()
         state_bw = CompositeActionExtractor._bin_p_window(state, window_size, bins, False)
-        actions_bw = CompositeActionExtractor._bin_p_window(actions, window_size, bins, True)
+        actions_bw = CompositeActionExtractor._bin_p_window(actions, window_size, bins, True and not is_single_action)
+        end = time.time()
+        logging.debug(f'Stage 2 [Bin / Prob / Window]: Elapsed time {end - start}')
 
         # Produce Analysis of both state and actions.
+        start = time.time()
         state_analyzed = CompositeActionExtractor._analyze(state_bw, method=analysis_method, collapse_by_average=True)
-        action_analyzed = CompositeActionExtractor._analyze(actions_bw, method=analysis_method, collapse_by_average=False)
+        action_analyzed = CompositeActionExtractor._analyze(actions_bw, method=analysis_method,
+                                                            collapse_by_average=is_single_action)
+        end = time.time()
+        logging.debug(f'Stage 3 [Analyze]: Elapsed time {end - start}')
 
         # Normalize the outputs
+        start = time.time()
         state_analyzed_norm = CompositeActionExtractor._normalize(state_analyzed)
-        action_analyzed_norm = CompositeActionExtractor._normalize(action_analyzed, norm_per_dim=True)
+        action_analyzed_norm = CompositeActionExtractor._normalize(action_analyzed, norm_per_dim=not is_single_action)
+        end = time.time()
+        logging.debug(f'Stage 4: [Normalize] Elapsed time {end - start}')
 
         # Get binary distributions
+        start = time.time()
         state_analyzed_binary = CompositeActionExtractor._get_binary_dist(state_analyzed_norm, keep_percent)
-        action_analyzed_binary = CompositeActionExtractor._get_binary_dist(action_analyzed_norm, keep_percent, per_dim=True)
+        action_analyzed_binary = CompositeActionExtractor._get_binary_dist(action_analyzed_norm, keep_percent,
+                                                                           per_dim=True and not is_single_action)
+        end = time.time()
+        logging.debug(f'Stage 5 [Get Binary]: Elapsed time {end - start}')
 
         # Get segments (Hurray)
-        composite_actions, index_groups = CompositeActionExtractor._get_composite_action_groups(actions, action_analyzed_binary,
+        start = time.time()
+        composite_actions, index_groups = CompositeActionExtractor._get_composite_action_groups(actions,
+                                                                                                action_analyzed_binary,
                                                                                                 state_analyzed_binary,
                                                                                                 window_size)
+        end = time.time()
+        logging.debug(f'Stage 6 [Get Composite]: Elapsed time {end - start}')
 
         if k != -1:
-            scored_composite_actions = {key: [(seg, state_analyzed_norm[~np.isnan(seg)].sum()) for seg in composite_actions[key]] for key in composite_actions}
+            scored_composite_actions = {
+                key: [(seg, state_analyzed_norm[~np.isnan(seg)].sum()) for seg in composite_actions[key]] for key in
+                composite_actions
+            }
             for key in scored_composite_actions:
-                scored_composite_actions[key] = list(sorted(scored_composite_actions[key], key=lambda x: x[1], reverse=True))[:k]
+                scored_composite_actions[key] = list(
+                    sorted(scored_composite_actions[key], key=lambda x: x[1], reverse=True))[:k]
         else:
             scored_composite_actions = None
 

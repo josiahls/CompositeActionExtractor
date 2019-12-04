@@ -4,7 +4,7 @@ Runs a list of parameters of the extractor and outputs a resulting csv.
 import os
 
 from segmentation.composite_action_extractor import CompositeActionExtractor
-from utils.file_handling import get_data_df
+from composite_action_extractor.utils.file_handling import get_data_df
 from timeit import default_timer as timer
 import pandas as pd
 import numpy as np
